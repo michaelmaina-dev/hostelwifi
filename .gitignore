@@ -1,0 +1,12 @@
+app/config.py
+venv/
+__pycache__/
+*.pyc
+*.db
+.vscode/
+
+# Old scratch/test files
+test-router.py
+test_hotspot.py
+test_queue.py
+test_service.py
