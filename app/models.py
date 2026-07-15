@@ -28,7 +28,9 @@ class Customer(Base):
 
     room = Column(String)
 
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+
+    suspended = Column(Boolean, default=False)
 
     
     '''current_package_id = Column(
@@ -75,13 +77,14 @@ class Payment(Base):
 
     status = Column(String)
 
-    paid_at = Column(DateTime, default=datetime.now(timezone.utc))
+    paid_at = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
     customer = relationship("Customer", back_populates="payments")
 
     package = relationship("Package", back_populates="payments")
 
     activated = Column(Boolean, default=False)
+    
 
     expires_at = Column(DateTime, nullable=True)
 

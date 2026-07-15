@@ -60,7 +60,12 @@ class MikroTikService:
         except TrapError as e:
          print(f"Router API error occurred: {e}")
     
-        
+    def remove_hotspot_user(self, username):
+        hotspot = self.api.get_resource("/ip/hotspot/user")
+        existing = hotspot.get(name=username)
+
+        if existing:
+            hotspot.remove(id=existing[0]["id"])
     
     def add_user(self):
         user =self.api.get_resource("/ip/hotspot/user")
@@ -85,11 +90,13 @@ class MikroTikService:
     def create_hotspot_user(self, username, password, profile="default"):
         hotspot = self.api.get_resource("/ip/hotspot/user")
 
-        hotspot.add(
-            name=username,
-            password=password,
-            profile=profile
-        )
+        existing = hotspot.get(name=username)
+
+        if existing:
+            mikrotik_id = existing[0]["id"]
+            hotspot.set(id=mikrotik_id, password=password, profile=profile, disabled="no")
+        else:
+            hotspot.add(name=username, password=password, profile=profile)
 
     def get_hotspot_users(self):
         hotspot = self.api.get_resource("/ip/hotspot/user")

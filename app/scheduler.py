@@ -3,7 +3,7 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from app.database import SessionLocal
 from app.services.billing import BillingService
-from app.models import Payment
+from app.models import Payment, Customer
 from datetime import datetime
 
 
@@ -16,8 +16,10 @@ def check_expired_payments():
 
         expired = (
             db.query(Payment)
+            .join(Customer)
             .filter(Payment.activated == True)
             .filter(Payment.expires_at < datetime.now(timezone.utc))
+            .filter(Customer.suspended == False)
             .all()
         )
 
@@ -29,6 +31,6 @@ def check_expired_payments():
     finally:
         db.close()
 
-
+       
 scheduler = BackgroundScheduler()
 scheduler.add_job(check_expired_payments, "interval", seconds=10)

@@ -14,6 +14,7 @@ from .routers import suspend_acc
 from .scheduler import scheduler
 from .routers import mpesa
 from .routers import pages
+from .routers import admin
 
 
 models.Base.metadata.create_all(bind=engine)
@@ -48,6 +49,7 @@ app.include_router(activate_pay.router)
 app.include_router(extend_period.router)
 app.include_router(suspend_acc.router)
 app.include_router(pages.router)
+app.include_router(admin.router)
 
 
 @app.get("/")
