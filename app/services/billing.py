@@ -56,7 +56,7 @@ class BillingService:
         )
 
         payment.activated = True
-        payment.expires_at = utc_now() + timedelta(seconds==package.duration_seconds)
+        payment.expires_at = utc_now() + timedelta(seconds=package.duration_seconds)
         self.db.commit()
 
         return payment
@@ -92,7 +92,7 @@ class BillingService:
         if not payment.expires_at:
             return None
 
-        payment.expires_at = utc_now() + timedelta(seconds==package.duration_seconds)
+        payment.expires_at = utc_now() + timedelta(seconds=package.duration_seconds)
         self.db.commit()
 
         return payment
