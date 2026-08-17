@@ -23,10 +23,11 @@ def check_expired_payments():
             .all()
         )
 
-        print(f"[scheduler] Checked at {datetime.now(timezone.utc)} — found {len(expired)} expired payment(s)")
-
         for payment in expired:
-            billing.suspend_customer(payment.customer_id)
+            try:
+                billing.suspend_customer(payment.customer_id)
+            except Exception as e:
+                print(f"[scheduler] Failed to suspend customer {payment.customer_id}: {e}")
 
     finally:
         db.close()
