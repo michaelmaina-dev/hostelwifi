@@ -11,9 +11,13 @@ class PesapalService:
             "consumer_key": PESAPAL_CONSUMER_KEY,
             "consumer_secret": PESAPAL_CONSUMER_SECRET
         }
-        response = requests.post(url, json=payload)
-        response.raise_for_status()
-        return response.json()["token"]
+        response = requests.post(url, json=payload, timeout=10)
+        data = response.json()
+
+        if "token" not in data:
+            raise Exception(f"Pesapal auth failed: {data}")
+
+        return data["token"]
 
     def register_ipn(self, token, callback_url):
         url = f"{PESAPAL_BASE_URL}/api/URLSetup/RegisterIPN"
@@ -22,7 +26,7 @@ class PesapalService:
             "url": callback_url,
             "ipn_notification_type": "GET"
         }
-        response = requests.post(url, json=payload, headers=headers)
+        response = requests.post(url, json=payload, headers=headers, timeout=10)
         response.raise_for_status()
         return response.json()["ipn_id"]
 
