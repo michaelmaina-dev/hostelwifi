@@ -9,12 +9,18 @@ from app.config import (
     MPESA_PASSKEY,
     MPESA_CALLBACK_URL
 )
+from app.config import MPESA_BASE_URL
+
+# in get_access_token():
+
+
+# in stk_push():
 
 
 class MpesaService:
 
     def get_access_token(self):
-        url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
+        url = f"{MPESA_BASE_URL}/oauth/v1/generate?grant_type=client_credentials"
 
         response = requests.get(
             url,
@@ -38,7 +44,7 @@ class MpesaService:
         access_token = self.get_access_token()
         password, timestamp = self.build_password()
 
-        url = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
+        url = f"{MPESA_BASE_URL}/mpesa/stkpush/v1/processrequest"
 
         headers = {
             "Authorization": f"Bearer {access_token}"
@@ -48,7 +54,7 @@ class MpesaService:
             "BusinessShortCode": MPESA_SHORTCODE,
             "Password": password,
             "Timestamp": timestamp,
-            "TransactionType": "CustomerPayBillOnline",
+            "TransactionType": "CustomerBuyGoodsOnline",
             "Amount": amount,
             "PartyA": phone_number,
             "PartyB": MPESA_SHORTCODE,
