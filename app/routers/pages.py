@@ -210,33 +210,47 @@ def payment_page(db: Session = Depends(get_db)):
         </div>
 
         <script>
-            async function pay(packageId, btn) {{
-                const phone = document.getElementById("phone").value.trim();
-                const status = document.getElementById("status");
+          async function pay(packageId, btn) {{
+            const phone = document.getElementById("phone").value.trim();
+            const status = document.getElementById("status");
 
-                if (!phone) {{
-                    status.innerText = "Enter your phone number first.";
-                    status.className = "";
-                    return;
-                }}
-
-                btn.disabled = true;
-                status.innerText = "Sending request to your phone...";
+            if (!phone) {{
+                status.innerText = "Enter your phone number first.";
                 status.className = "";
-
-                try {{
-                    const response = await fetch(`/mpesa/pay?package_id=${{packageId}}&phone_number=${{encodeURIComponent(phone)}}`, {{
-                        method: "POST"
-                    }});
-                    const data = await response.json();
-                    status.innerText = data.message || "Something went wrong. Try again.";
-                    status.className = response.ok ? "success" : "";
-                }} catch (err) {{
-                    status.innerText = "Network error. Check your connection and try again.";
-                }} finally {{
-                    btn.disabled = false;
-                }}
+                return;
             }}
+
+            btn.disabled = true;
+            status.innerText = "Sending request to your phone...";
+            status.className = "";
+
+            try {{
+                const response = await fetch(`/mpesa/pay?package_id=${{packageId}}&phone_number=${{encodeURIComponent(phone)}}`, {{
+                    method: "POST"
+                }});
+                const data = await response.json();
+
+                if (response.ok) {{
+                    status.innerHTML = `
+                        ✅ Payment request sent! Check your phone and enter your M-Pesa PIN.<br><br>
+                        <strong>Once you get the M-Pesa confirmation SMS:</strong><br>
+                        1. Go back to your WiFi settings<br>
+                        2. Reconnect to this WiFi network<br>
+                        3. On the login page, enter:<br>
+                        &nbsp;&nbsp;• Username: your phone number<br>
+                        &nbsp;&nbsp;• Password: the M-Pesa code from your SMS
+                    `;
+                    status.className = "success";
+                }} else {{
+                    status.innerText = data.message || "Something went wrong. Try again.";
+                    status.className = "";
+                }}
+            }} catch (err) {{
+                status.innerText = "Network error. Check your connection and try again.";
+            }} finally {{
+                btn.disabled = false;
+            }}
+        }}
         </script>
     </body>
     </html>
