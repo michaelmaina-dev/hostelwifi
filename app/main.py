@@ -23,9 +23,9 @@ models.Base.metadata.create_all(bind=engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    scheduler.start()
+    #scheduler.start()
     yield
-    scheduler.shutdown()
+    #scheduler.shutdown()
 
 
 app = FastAPI(

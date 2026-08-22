@@ -210,7 +210,7 @@ def payment_page(db: Session = Depends(get_db)):
         </div>
 
         <script>
-          async function pay(packageId, btn) {{
+        async function pay(packageId, btn) {{
             const phone = document.getElementById("phone").value.trim();
             const status = document.getElementById("status");
 
@@ -221,33 +221,26 @@ def payment_page(db: Session = Depends(get_db)):
             }}
 
             btn.disabled = true;
-            status.innerText = "Sending request to your phone...";
+            status.innerText = "Setting up your payment...";
             status.className = "";
 
             try {{
-                const response = await fetch(`/mpesa/pay?package_id=${{packageId}}&phone_number=${{encodeURIComponent(phone)}}`, {{
+                const response = await fetch(`/pesapal/pay?package_id=${{packageId}}&phone_number=${{encodeURIComponent(phone)}}`, {{
                     method: "POST"
                 }});
                 const data = await response.json();
 
-                if (response.ok) {{
-                    status.innerHTML = `
-                        ✅ Payment request sent! Check your phone and enter your M-Pesa PIN.<br><br>
-                        <strong>Once you get the M-Pesa confirmation SMS:</strong><br>
-                        1. Go back to your WiFi settings<br>
-                        2. Reconnect to this WiFi network<br>
-                        3. On the login page, enter:<br>
-                        &nbsp;&nbsp;• Username: your phone number<br>
-                        &nbsp;&nbsp;• Password: the M-Pesa code from your SMS
-                    `;
+                if (response.ok && data.redirect_url) {{
+                    status.innerText = "Redirecting you to complete payment...";
                     status.className = "success";
+                    window.location.href = data.redirect_url;
                 }} else {{
                     status.innerText = data.message || "Something went wrong. Try again.";
                     status.className = "";
+                    btn.disabled = false;
                 }}
             }} catch (err) {{
                 status.innerText = "Network error. Check your connection and try again.";
-            }} finally {{
                 btn.disabled = false;
             }}
         }}
