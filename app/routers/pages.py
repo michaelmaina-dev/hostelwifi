@@ -347,4 +347,3 @@ def payment_page(db: Session = Depends(get_db)):
     """
 
     return HTMLResponse(content=html)
-EOF
