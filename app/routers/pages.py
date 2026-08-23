@@ -13,7 +13,6 @@ def payment_page(db: Session = Depends(get_db)):
     packages = db.query(models.Package).filter(models.Package.active == True).all()
 
     def signal_bars(pkg):
-        # crude speed ranking just to size the bars — highest download in the list gets full bars
         speeds = [int("".join(filter(str.isdigit, p.download_speed)) or 0) for p in packages]
         max_speed = max(speeds) if speeds else 1
         this_speed = int("".join(filter(str.isdigit, pkg.download_speed)) or 0)
@@ -56,7 +55,6 @@ def payment_page(db: Session = Depends(get_db)):
                 --text: #F2F0EA;
                 --muted: #8A8F9C;
                 --accent: #E8A33D;
-                --accent-dim: #4A3A1E;
             }}
 
             * {{ box-sizing: border-box; }}
@@ -90,9 +88,40 @@ def payment_page(db: Session = Depends(get_db)):
                 font-family: 'Space Grotesk', sans-serif;
                 font-size: 28px;
                 font-weight: 700;
-                margin: 0 0 28px 0;
+                margin: 0 0 24px 0;
                 line-height: 1.2;
             }}
+
+            .tabs {{
+                display: flex;
+                gap: 4px;
+                background: var(--surface);
+                border-radius: 10px;
+                padding: 4px;
+                margin-bottom: 24px;
+            }}
+
+            .tab {{
+                flex: 1;
+                text-align: center;
+                padding: 10px;
+                border-radius: 7px;
+                font-size: 13px;
+                font-weight: 500;
+                cursor: pointer;
+                color: var(--muted);
+                border: none;
+                background: transparent;
+                font-family: 'Inter', sans-serif;
+            }}
+
+            .tab.active {{
+                background: var(--accent);
+                color: #14161C;
+            }}
+
+            .panel {{ display: none; }}
+            .panel.active {{ display: block; }}
 
             label {{
                 display: block;
@@ -110,7 +139,7 @@ def payment_page(db: Session = Depends(get_db)):
                 color: var(--text);
                 font-family: 'IBM Plex Mono', monospace;
                 font-size: 16px;
-                margin-bottom: 28px;
+                margin-bottom: 16px;
             }}
 
             input:focus {{
@@ -134,11 +163,6 @@ def payment_page(db: Session = Depends(get_db)):
             .package:hover {{
                 background: var(--surface-hover);
                 border-color: var(--accent);
-            }}
-
-            .package:focus-visible {{
-                outline: 2px solid var(--accent);
-                outline-offset: 2px;
             }}
 
             .package-top {{
@@ -185,6 +209,48 @@ def payment_page(db: Session = Depends(get_db)):
                 color: var(--accent);
             }}
 
+            button.primary {{
+                width: 100%;
+                padding: 14px;
+                background: var(--accent);
+                color: #14161C;
+                border: none;
+                border-radius: 10px;
+                font-family: 'Space Grotesk', sans-serif;
+                font-weight: 700;
+                font-size: 15px;
+                cursor: pointer;
+            }}
+
+            .trial-box {{
+                background: var(--surface);
+                border: 1px solid #2A2E37;
+                border-radius: 12px;
+                padding: 20px;
+                text-align: center;
+            }}
+
+            .trial-box p {{
+                color: var(--muted);
+                font-size: 14px;
+                margin-bottom: 16px;
+            }}
+
+            a.trial-link {{
+                display: block;
+                width: 100%;
+                padding: 14px;
+                background: var(--accent);
+                color: #14161C;
+                border-radius: 10px;
+                font-family: 'Space Grotesk', sans-serif;
+                font-weight: 700;
+                font-size: 15px;
+                text-decoration: none;
+                text-align: center;
+                box-sizing: border-box;
+            }}
+
             #status {{
                 margin-top: 20px;
                 font-size: 14px;
@@ -199,230 +265,86 @@ def payment_page(db: Session = Depends(get_db)):
     <body>
         <div class="container">
             <div class="eyebrow">Shadow WiFi</div>
-            <h1>Pick a package,<br>pay with M-Pesa.</h1>
+            <h1>Get connected.</h1>
 
-            <label for="phone">Phone number</label>
-            <input type="tel" id="phone" placeholder="0743512704" />
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('buy')">Buy</button>
+                <button class="tab" onclick="showTab('trial')">Free Trial</button>
+                <button class="tab" onclick="showTab('login')">Log In</button>
+            </div>
 
-            {package_cards}
+            <div id="panel-buy" class="panel active">
+                <label for="phone">Phone number</label>
+                <input type="tel" id="phone" placeholder="0743512704" />
+                {package_cards}
+            </div>
+
+            <div id="panel-trial" class="panel">
+                <div class="trial-box">
+                    <p>New here? Get 4 days of free WiFi, up to 3 Mbps. One trial per device.</p>
+                    <a href="http://192.168.88.1/login" class="trial-link">Start Free Trial</a>
+                </div>
+            </div>
+
+            <div id="panel-login" class="panel">
+                <form action="http://192.168.88.1/login" method="post">
+                    <label for="login-username">Phone number</label>
+                    <input type="text" id="login-username" name="username" placeholder="0743512704" required>
+                    <label for="login-password">M-Pesa receipt code</label>
+                    <input type="text" id="login-password" name="password" placeholder="e.g. QGH7XXXXX" required>
+                    <button type="submit" class="primary">Log In</button>
+                </form>
+            </div>
 
             <p id="status"></p>
         </div>
 
         <script>
-        async function pay(packageId, btn) {{
-            const phone = document.getElementById("phone").value.trim();
-            const status = document.getElementById("status");
-
-            if (!phone) {{
-                status.innerText = "Enter your phone number first.";
-                status.className = "";
-                return;
+            function showTab(name) {{
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+                document.querySelector(`.tab[onclick="showTab('${{name}}')"]`).classList.add('active');
+                document.getElementById(`panel-${{name}}`).classList.add('active');
             }}
 
-            btn.disabled = true;
-            status.innerText = "Setting up your payment...";
-            status.className = "";
+            async function pay(packageId, btn) {{
+                const phone = document.getElementById("phone").value.trim();
+                const status = document.getElementById("status");
 
-            try {{
-                const response = await fetch(`/pesapal/pay?package_id=${{packageId}}&phone_number=${{encodeURIComponent(phone)}}`, {{
-                    method: "POST"
-                }});
-                const data = await response.json();
-
-                if (response.ok && data.redirect_url) {{
-                    status.innerText = "Redirecting you to complete payment...";
-                    status.className = "success";
-                    window.location.href = data.redirect_url;
-                }} else {{
-                    status.innerText = data.message || "Something went wrong. Try again.";
+                if (!phone) {{
+                    status.innerText = "Enter your phone number first.";
                     status.className = "";
+                    return;
+                }}
+
+                btn.disabled = true;
+                status.innerText = "Setting up your payment...";
+                status.className = "";
+
+                try {{
+                    const response = await fetch(`/pesapal/pay?package_id=${{packageId}}&phone_number=${{encodeURIComponent(phone)}}`, {{
+                        method: "POST"
+                    }});
+                    const data = await response.json();
+
+                    if (response.ok && data.redirect_url) {{
+                        status.innerText = "Redirecting you to complete payment...";
+                        status.className = "success";
+                        window.location.href = data.redirect_url;
+                    }} else {{
+                        status.innerText = data.message || "Something went wrong. Try again.";
+                        status.className = "";
+                        btn.disabled = false;
+                    }}
+                }} catch (err) {{
+                    status.innerText = "Network error. Check your connection and try again.";
                     btn.disabled = false;
                 }}
-            }} catch (err) {{
-                status.innerText = "Network error. Check your connection and try again.";
-                btn.disabled = false;
             }}
-        }}
         </script>
     </body>
     </html>
     """
 
     return HTMLResponse(content=html)
-
-@router.get("/admin", response_class=HTMLResponse)
-def admin_page():
-    html = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Admin — Shadow WiFi</title>
-        <style>
-            body { font-family: sans-serif; background: #14161C; color: #F2F0EA; padding: 24px; }
-            h2 { margin-top: 32px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-            th, td { text-align: left; padding: 8px; border-bottom: 1px solid #333; font-size: 14px; }
-            button { background: #E8A33D; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; margin-right: 4px; }
-            input { background: #1D2027; color: #F2F0EA; border: 1px solid #444; padding: 4px 8px; border-radius: 4px; }
-            #keyBox { margin-bottom: 20px; }
-        </style>
-    </head>
-    <body>
-        <div id="keyBox">
-            <label>Admin Key: </label>
-            <input type="password" id="apiKey" placeholder="paste your ADMIN_API_KEY" style="width:300px;">
-            <button onclick="loadAll()">Load Dashboard</button>
-        </div>
-
-        <h2>Today's Payments — <span id="revenue"></span></h2>
-        <table id="paymentsTable">
-            <thead><tr><th>Phone</th><th>Amount</th><th>Status</th><th>Time</th></tr></thead>
-            <tbody></tbody>
-        </table>
-
-        <h2>Customers</h2>
-        <table id="customersTable">
-            <thead><tr><th>Phone</th><th>Status</th><th>Expires</th><th>Actions</th></tr></thead>
-            <tbody></tbody>
-        </table>
-
-        <h2>Packages</h2>
-        <div style="margin-bottom:16px; display:flex; gap:8px; flex-wrap:wrap;">
-            <input id="newName" placeholder="Name" style="width:100px">
-            <input id="newValue" type="number" placeholder="Value" style="width:70px">
-            <select id="newUnit">
-                <option value="minutes">minutes</option>
-                <option value="hours">hours</option>
-                <option value="days">days</option>
-                <option value="weeks">weeks</option>
-                <option value="months">months</option>
-            </select>
-            <input id="newPrice" type="number" placeholder="Price" style="width:70px">
-            <input id="newDown" placeholder="Download (e.g. 5M)" style="width:100px">
-            <input id="newUp" placeholder="Upload (e.g. 2M)" style="width:100px">
-            <button onclick="addPackage()">Add Package</button>
-        </div>
-        <table id="packagesTable">
-            <thead><tr><th>Name</th><th>Speed</th><th>Price</th><th></th></tr></thead>
-            <tbody></tbody>
-        </table>
-
-        <script>
-            function getKey() {
-                return document.getElementById("apiKey").value;
-            }
-
-            async function api(path, method = "GET") {
-                const res = await fetch(path, {
-                    method,
-                    headers: { "X-Api-Key": getKey() }
-                });
-                return res.json();
-            }
-
-            async function loadAll() {
-                loadPayments();
-                loadCustomers();
-                loadPackages();
-            }
-
-            async function loadPayments() {
-                const data = await api("/admin/payments/today");
-                document.getElementById("revenue").innerText = "KES " + data.total_revenue;
-                const body = document.querySelector("#paymentsTable tbody");
-                body.innerHTML = "";
-                data.payments.forEach(p => {
-                    body.innerHTML += `<tr><td>${p.customer_phone || "-"}</td><td>${p.amount}</td><td>${p.status}</td><td>${p.paid_at}</td></tr>`;
-                });
-            }
-
-            async function loadCustomers() {
-                const customers = await api("/admin/customers");
-                const body = document.querySelector("#customersTable tbody");
-                body.innerHTML = "";
-                customers.forEach(c => {
-                    body.innerHTML += `
-                        <tr>
-                            <td>${c.phone}</td>
-                            <td>${c.status}</td>
-                            <td>${c.expires_at || "-"}</td>
-                            <td>
-                                ${c.latest_payment_id ? `<button onclick="activate(${c.latest_payment_id})">Activate</button>` : ""}
-                                <button onclick="suspend(${c.id})">Suspend</button>
-                                ${c.latest_payment_id ? `<button onclick="extend(${c.latest_payment_id})">Extend</button>` : ""}
-                                <button onclick="deleteCustomer(${c.id})">Delete</button>
-                            </td>
-                        </tr>`;
-                });
-            }
-
-            async function loadPackages() {
-                const packages = await api("/admin/packages");
-                const body = document.querySelector("#packagesTable tbody");
-                body.innerHTML = "";
-                packages.forEach(p => {
-                    body.innerHTML += `
-                        <tr>
-                            <td>${p.name}</td>
-                            <td>${p.download_speed}/${p.upload_speed}</td>
-                            <td><input type="number" id="price-${p.id}" value="${p.price}" style="width:80px"></td>
-                            <td>
-                                <button onclick="updatePrice(${p.id})">Save</button>
-                                <button onclick="deletePackage(${p.id})">Delete</button>
-                            </td>
-                        </tr>`;
-                });
-            }
-
-            async function addPackage() {
-                const params = new URLSearchParams({
-                    name: document.getElementById("newName").value,
-                    duration_value: document.getElementById("newValue").value,
-                    duration_unit: document.getElementById("newUnit").value,
-                    price: document.getElementById("newPrice").value,
-                    download_speed: document.getElementById("newDown").value,
-                    upload_speed: document.getElementById("newUp").value
-                });
-                await api(`/admin/packages?${params.toString()}`, "POST");
-                loadPackages();
-            }
-
-            async function deletePackage(packageId) {
-                if (!confirm("Delete this package?")) return;
-                await api(`/admin/packages/${packageId}`, "DELETE");
-                loadPackages();
-            }
-
-            async function deleteCustomer(customerId) {
-                if (!confirm("Delete this customer permanently? This removes their payment history too.")) return;
-                await api(`/admin/customers/${customerId}`, "DELETE");
-                loadCustomers();
-            }
-
-            async function activate(paymentId) {
-                await api(`/activate_pay/activate/${paymentId}`, "POST");
-                loadCustomers();
-            }
-
-            async function suspend(customerId) {
-                await api(`/suspend_acc/suspend/${customerId}`, "POST");
-                loadCustomers();
-            }
-
-            async function extend(paymentId) {
-                await api(`/extend_period/extend/${paymentId}`, "POST");
-                loadCustomers();
-            }
-
-            async function updatePrice(packageId) {
-                const price = document.getElementById(`price-${packageId}`).value;
-                await api(`/admin/packages/${packageId}/price?price=${price}`, "PUT");
-                loadPackages();
-            }
-        </script>
-    </body>
-    </html>
-    """
-    return HTMLResponse(content=html)
+EOF
