@@ -75,6 +75,21 @@ def payment_page(db: Session = Depends(get_db)):
                 max-width: 420px;
             }}
 
+            .logo-card {{
+                background: #ffffff;
+                border-radius: 16px;
+                padding: 16px;
+                display: flex;
+                justify-content: center;
+                margin-bottom: 24px;
+            }}
+
+            .logo-card img {{
+                max-width: 140px;
+                height: auto;
+                display: block;
+            }}
+
             .eyebrow {{
                 font-family: 'IBM Plex Mono', monospace;
                 font-size: 12px;
@@ -264,6 +279,10 @@ def payment_page(db: Session = Depends(get_db)):
     </head>
     <body>
         <div class="container">
+            <div class="logo-card">
+                <img src="/static/logo.jpeg" alt="Shadownet">
+            </div>
+
             <div class="eyebrow">Shadow WiFi</div>
             <h1>Get connected.</h1>
 

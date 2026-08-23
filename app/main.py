@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-
+from fastapi.staticfiles import StaticFiles
 from .database import engine
 from . import models
 
@@ -23,9 +23,9 @@ models.Base.metadata.create_all(bind=engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    #scheduler.start()
+    scheduler.start()
     yield
-    #scheduler.shutdown()
+    scheduler.shutdown()
 
 
 app = FastAPI(
@@ -34,6 +34,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
