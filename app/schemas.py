@@ -18,6 +18,7 @@ class PackageCreate(BaseModel):
     price: int
     download_speed: str
     upload_speed: str
+    shared_users: int = 1
 
 
 class PackageResponse(BaseModel):
@@ -27,6 +28,7 @@ class PackageResponse(BaseModel):
     price: int
     download_speed: str
     upload_speed: str
+    shared_users: int
     active: bool
     class Config:
         from_attributes = True

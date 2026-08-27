@@ -110,15 +110,12 @@ class MikroTikService:
         if user:
             hotspot.set(id=user[0]["id"], disabled="yes")
     
-    def ensure_profile(self, profile_name, rate_limit):
+    def ensure_profile(self, profile_name, rate_limit, shared_users=1):
         profiles = self.api.get_resource("/ip/hotspot/user/profile")
-
         existing = profiles.get(name=profile_name)
-
         if existing:
-            return  # profile already exists, nothing to do
-
+            return
         profiles.add(
             name=profile_name,
-            **{"rate-limit": rate_limit}
+            **{"rate-limit": rate_limit, "shared-users": str(shared_users)}
         )

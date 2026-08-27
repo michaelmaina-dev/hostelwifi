@@ -46,7 +46,7 @@ class BillingService:
         profile_name = f"pkg_{package.id}"
         rate_limit = f"{package.upload_speed}/{package.download_speed}"
 
-        self.router.ensure_profile(profile_name, rate_limit)
+        self.router.ensure_profile(profile_name, rate_limit, shared_users=package.shared_users)
 
         self.router.create_hotspot_user(
             username=username,

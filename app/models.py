@@ -61,6 +61,8 @@ class Package(Base):
 
     payments = relationship("Payment", back_populates="package")
 
+    shared_users = Column(Integer, default=1)
+
 
 class Payment(Base):
     __tablename__ = "payments"

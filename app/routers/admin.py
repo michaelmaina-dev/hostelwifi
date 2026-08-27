@@ -117,6 +117,7 @@ def create_package(
     price: int,
     download_speed: str,
     upload_speed: str,
+    shared_users: int = 1,
     db: Session = Depends(get_db)
 ):
     unit = duration_unit.lower()
@@ -128,7 +129,8 @@ def create_package(
         duration_seconds=duration_value * UNIT_TO_SECONDS[unit],
         price=price,
         download_speed=download_speed,
-        upload_speed=upload_speed
+        upload_speed=upload_speed,
+        shared_users=shared_users
     )
     db.add(package)
     db.commit()
