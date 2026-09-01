@@ -325,7 +325,6 @@ def payment_page(db: Session = Depends(get_db)):
                 document.querySelector(`.tab[onclick="showTab('${{name}}')"]`).classList.add('active');
                 document.getElementById(`panel-${{name}}`).classList.add('active');
             }}
-
             async function pay(packageId, btn) {{
                 const phone = document.getElementById("phone").value.trim();
                 const status = document.getElementById("status");
@@ -337,19 +336,23 @@ def payment_page(db: Session = Depends(get_db)):
                 }}
 
                 btn.disabled = true;
-                status.innerText = "Setting up your payment...";
+                status.innerText = "Sending request to your phone...";
                 status.className = "";
 
                 try {{
-                    const response = await fetch(`/pesapal/pay?package_id=${{packageId}}&phone_number=${{encodeURIComponent(phone)}}`, {{
+                    const response = await fetch(`/paystack/pay?package_id=${{packageId}}&phone_number=${{encodeURIComponent(phone)}}`, {{
                         method: "POST"
                     }});
                     const data = await response.json();
 
-                    if (response.ok && data.redirect_url) {{
-                        status.innerText = "Redirecting you to complete payment...";
+                    if (response.ok) {{
+                        status.innerHTML = `
+                            ✅ Check your phone and enter your M-Pesa PIN to complete payment.<br><br>
+                            Once paid, you'll be logged in automatically. If not, reconnect and log in using:<br>
+                            &nbsp;&nbsp;• Username: your phone number<br>
+                            &nbsp;&nbsp;• Password: the M-Pesa code from your confirmation SMS
+                        `;
                         status.className = "success";
-                        window.location.href = data.redirect_url;
                     }} else {{
                         status.innerText = data.message || "Something went wrong. Try again.";
                         status.className = "";
