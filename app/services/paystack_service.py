@@ -20,7 +20,7 @@ class PaystackService:
             "currency": "KES",
             "reference": reference,
             "mobile_money": {
-                "phone": phone_number,
+                "phone": f"+{phone_number}",
                 "provider": "mpesa"
             }
         }
