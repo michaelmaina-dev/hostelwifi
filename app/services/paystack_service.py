@@ -8,6 +8,10 @@ BASE_URL = "https://api.paystack.co"
 class PaystackService:
 
     def charge_mpesa(self, amount, phone_number, reference):
+        # phone_number arrives as 254XXXXXXXXX from the router's normalization
+        # Paystack's mobile_money field wants local format: 0XXXXXXXXX
+        local_phone = "0" + phone_number[3:] if phone_number.startswith("254") else phone_number
+
         url = f"{BASE_URL}/charge"
         headers = {
             "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}",
@@ -19,11 +23,11 @@ class PaystackService:
             "currency": "KES",
             "reference": reference,
             "mobile_money": {
-                "phone": f"+{phone_number}",
+                "phone": local_phone,
                 "provider": "mpesa"
             }
         }
-        response = requests.post(url, json=payload, headers=headers, timeout=10)
+        response = requests.post(url, json=payload, headers=headers, timeout=25)
         data = response.json()
 
         if not data.get("status"):
