@@ -7,14 +7,14 @@ BASE_URL = "https://api.paystack.co"
 
 class PaystackService:
 
-    def charge_mpesa(self, email, amount, phone_number, reference):
+    def charge_mpesa(self, amount, phone_number, reference):
         url = f"{BASE_URL}/charge"
         headers = {
             "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}",
             "Content-Type": "application/json"
         }
         payload = {
-            "email": email,
+            "email": f"{phone_number}@shadownet.fyi",
             "amount": int(amount * 100),
             "currency": "KES",
             "reference": reference,

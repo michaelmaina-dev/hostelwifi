@@ -44,12 +44,10 @@ def initiate_payment(package_id: int, phone_number: str, db: Session = Depends(g
 
     paystack = PaystackService()
     result = paystack.charge_mpesa(
-        email=f"{phone_number}@noemail.hostelwifi.local",
         amount=package.price,
         phone_number=phone_number,
         reference=reference
     )
-
     payment.checkout_request_id = reference
     db.commit()
 
