@@ -275,6 +275,43 @@ def payment_page(db: Session = Depends(get_db)):
             }}
 
             #status.success {{ color: var(--accent); }}
+
+            .contact {{
+                margin-top: 32px;
+                padding-top: 20px;
+                border-top: 1px solid #2A2E37;
+                text-align: center;
+            }}
+
+            .contact p {{
+                color: var(--muted);
+                font-size: 13px;
+                margin-bottom: 12px;
+            }}
+
+            .contact-links {{
+                display: flex;
+                gap: 10px;
+                justify-content: center;
+            }}
+
+            .contact-link {{
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 10px 16px;
+                background: var(--surface);
+                border: 1px solid #2A2E37;
+                border-radius: 10px;
+                color: var(--text);
+                text-decoration: none;
+                font-size: 13px;
+                font-weight: 500;
+            }}
+
+            .contact-link:hover {{
+                border-color: var(--accent);
+            }}
         </style>
     </head>
     <body>
@@ -316,6 +353,14 @@ def payment_page(db: Session = Depends(get_db)):
             </div>
 
             <p id="status"></p>
+
+            <div class="contact">
+                <p>Need help?</p>
+                <div class="contact-links">
+                    <a href="https://wa.me/254743512704" class="contact-link">WhatsApp</a>
+                    <a href="tel:+254743512704" class="contact-link">Call</a>
+                </div>
+            </div>
         </div>
 
         <script>
@@ -325,6 +370,7 @@ def payment_page(db: Session = Depends(get_db)):
                 document.querySelector(`.tab[onclick="showTab('${{name}}')"]`).classList.add('active');
                 document.getElementById(`panel-${{name}}`).classList.add('active');
             }}
+
             async function pay(packageId, btn) {{
                 const phone = document.getElementById("phone").value.trim();
                 const status = document.getElementById("status");
