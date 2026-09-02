@@ -356,7 +356,7 @@ def payment_page(db: Session = Depends(get_db)):
             </div>
 
             <div id="panel-login" class="panel">
-                <form action="http://192.168.88.1/login" method="post">
+                <form action="http://192.168.88.1/login" method="post" onsubmit="return normalizeLoginPhone()">
                     <input type="hidden" name="dst" value="http://www.msftconnecttest.com/redirect">
                     <label for="login-username">Phone number</label>
                     <input type="text" id="login-username" name="username" placeholder="0743512704" required>
@@ -378,6 +378,26 @@ def payment_page(db: Session = Depends(get_db)):
         </div>
 
         <script>
+            function autoLogin(username, password) {{
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = 'http://192.168.88.1/login';
+                form.innerHTML = `
+                    <input type="hidden" name="username" value="${{username}}">
+                    <input type="hidden" name="password" value="${{password}}">
+                    <input type="hidden" name="dst" value="http://www.msftconnecttest.com/redirect">
+                `;
+                document.body.appendChild(form);
+                form.submit();
+            }}
+            function normalizeLoginPhone() {{
+                const input = document.getElementById('login-username');
+                let phone = input.value.trim();
+                if (phone.startsWith('+')) phone = phone.slice(1);
+                if (phone.startsWith('0')) phone = '254' + phone.slice(1);
+                input.value = phone;
+                return true;
+            }}
             function showTab(name) {{
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
                 document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -438,10 +458,11 @@ def payment_page(db: Session = Depends(get_db)):
                     if (data.activated) {{
                         clearInterval(interval);
                         status.innerHTML = `
-                            ✅ Payment successful! You're connected.<br><br>
-                            Username: <b>${{data.username}}</b><br>
-                            Password: <b>${{data.password}}</b>
+                            ✅ Payment successful! Connecting you now...<br><br>
+                            <small>If it doesn't connect automatically, use:<br>
+                            Username: <b>${{data.username}}</b> — Password: <b>${{data.password}}</b></small>
                         `;
+                        autoLogin(data.username, data.password);  
                     }} else if (attempts > 20) {{
                         clearInterval(interval);
                         status.innerHTML = "Still waiting for payment confirmation. If you completed payment, please contact us.";
