@@ -360,7 +360,7 @@ def payment_page(db: Session = Depends(get_db)):
                     <input type="hidden" name="dst" value="http://www.msftconnecttest.com/redirect">
                     <label for="login-username">Phone number</label>
                     <input type="text" id="login-username" name="username" placeholder="0743512704" required>
-                    <label for="login-password">M-Pesa receipt code</label>
+                    <label for="login-password">Password</label>
                     <input type="text" id="login-password" name="password" placeholder="e.g. QGH7XXXXX" required>
                     <button type="submit" class="primary">Log In</button>
                 </form>
