@@ -49,12 +49,14 @@ def payment_page(db: Session = Depends(get_db)):
         <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
         <style>
             :root {{
-                --bg: #14161C;
-                --surface: #1D2027;
-                --surface-hover: #262A33;
-                --text: #F2F0EA;
-                --muted: #8A8F9C;
-                --accent: #E8A33D;
+                --bg: #FFFFFF;
+                --surface: #FFF5EB;
+                --surface-hover: #FFE8D1;
+                --text: #1A1A1A;
+                --muted: #6B6B6B;
+                --accent: #E8792D;
+                --accent-text: #FFFFFF;
+                --border: #FFD9B3;
             }}
 
             * {{ box-sizing: border-box; }}
@@ -132,7 +134,7 @@ def payment_page(db: Session = Depends(get_db)):
 
             .tab.active {{
                 background: var(--accent);
-                color: #14161C;
+                color: var(--accent-text);
             }}
 
             .panel {{ display: none; }}
@@ -149,7 +151,7 @@ def payment_page(db: Session = Depends(get_db)):
                 width: 100%;
                 padding: 14px 16px;
                 background: var(--surface);
-                border: 1px solid #333842;
+                border: 1px solid var(--border);
                 border-radius: 10px;
                 color: var(--text);
                 font-family: 'IBM Plex Mono', monospace;
@@ -165,7 +167,7 @@ def payment_page(db: Session = Depends(get_db)):
             .package {{
                 width: 100%;
                 background: var(--surface);
-                border: 1px solid #2A2E37;
+                border: 1px solid var(--border);
                 border-radius: 12px;
                 padding: 18px;
                 margin-bottom: 12px;
@@ -202,7 +204,7 @@ def payment_page(db: Session = Depends(get_db)):
 
             .bar {{
                 width: 5px;
-                background: #3A3F4A;
+                background: var(--border);
                 border-radius: 2px;
             }}
 
@@ -228,7 +230,7 @@ def payment_page(db: Session = Depends(get_db)):
                 width: 100%;
                 padding: 14px;
                 background: var(--accent);
-                color: #14161C;
+                color: var(--accent-text);
                 border: none;
                 border-radius: 10px;
                 font-family: 'Space Grotesk', sans-serif;
@@ -239,7 +241,7 @@ def payment_page(db: Session = Depends(get_db)):
 
             .trial-box {{
                 background: var(--surface);
-                border: 1px solid #2A2E37;
+                border: 1px solid var(--border);
                 border-radius: 12px;
                 padding: 20px;
                 text-align: center;
@@ -256,7 +258,7 @@ def payment_page(db: Session = Depends(get_db)):
                 width: 100%;
                 padding: 14px;
                 background: var(--accent);
-                color: #14161C;
+                color: var(--accent-text);
                 border-radius: 10px;
                 font-family: 'Space Grotesk', sans-serif;
                 font-weight: 700;
@@ -267,19 +269,32 @@ def payment_page(db: Session = Depends(get_db)):
             }}
 
             #status {{
-                margin-top: 20px;
+                display: none;
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                max-width: 380px;
+                width: calc(100% - 32px);
+                padding: 16px;
+                background: var(--surface);
+                border: 1px solid var(--accent);
+                border-radius: 10px;
                 font-size: 14px;
-                color: var(--muted);
-                min-height: 20px;
+                color: var(--text);
                 font-family: 'IBM Plex Mono', monospace;
+                z-index: 100;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.4);
             }}
+
+            #status.visible {{ display: block; }}
 
             #status.success {{ color: var(--accent); }}
 
             .contact {{
                 margin-top: 32px;
                 padding-top: 20px;
-                border-top: 1px solid #2A2E37;
+                border-top: 1px solid var(--border);
                 text-align: center;
             }}
 
@@ -301,7 +316,7 @@ def payment_page(db: Session = Depends(get_db)):
                 gap: 6px;
                 padding: 10px 16px;
                 background: var(--surface);
-                border: 1px solid #2A2E37;
+                border: 1px solid var(--border);
                 border-radius: 10px;
                 color: var(--text);
                 text-decoration: none;
@@ -325,25 +340,24 @@ def payment_page(db: Session = Depends(get_db)):
 
             <div class="tabs">
                 <button class="tab active" onclick="showTab('buy')">Buy</button>
-                <button class="tab" onclick="showTab('trial')">Free Trial</button>
                 <button class="tab" onclick="showTab('login')">Log In</button>
             </div>
 
             <div id="panel-buy" class="panel active">
-                <label for="phone">Phone number</label>
-                <input type="tel" id="phone" placeholder="0743512704" />
-                {package_cards}
-            </div>
+                <div id="package-list">
+                    {package_cards}
+                </div>
 
-            <div id="panel-trial" class="panel">
-                <div class="trial-box">
-                    <p>New here? Get 4 days of free WiFi, up to 3 Mbps. One trial per device.</p>
-                    <a href="http://192.168.88.1/login" class="trial-link">Start Free Trial</a>
+                <div id="phone-step" style="display:none;">
+                    <label for="phone">Enter your phone number to pay</label>
+                    <input type="tel" id="phone" placeholder="0743512704" />
+                    <button class="primary" onclick="confirmPay()">Pay Now</button>
                 </div>
             </div>
 
             <div id="panel-login" class="panel">
                 <form action="http://192.168.88.1/login" method="post">
+                    <input type="hidden" name="dst" value="http://www.msftconnecttest.com/redirect">
                     <label for="login-username">Phone number</label>
                     <input type="text" id="login-username" name="username" placeholder="0743512704" required>
                     <label for="login-password">M-Pesa receipt code</label>
@@ -371,43 +385,68 @@ def payment_page(db: Session = Depends(get_db)):
                 document.getElementById(`panel-${{name}}`).classList.add('active');
             }}
 
-            async function pay(packageId, btn) {{
+            let selectedPackageId = null;
+
+            function pay(packageId, btn) {{
+                selectedPackageId = packageId;
+                document.getElementById('package-list').style.display = 'none';
+                document.getElementById('phone-step').style.display = 'block';
+            }}
+
+            async function confirmPay() {{
                 const phone = document.getElementById("phone").value.trim();
                 const status = document.getElementById("status");
 
                 if (!phone) {{
                     status.innerText = "Enter your phone number first.";
-                    status.className = "";
+                    status.className = "visible";
                     return;
                 }}
 
-                btn.disabled = true;
                 status.innerText = "Sending request to your phone...";
-                status.className = "";
+                status.className = "visible";
 
                 try {{
-                    const response = await fetch(`/paystack/pay?package_id=${{packageId}}&phone_number=${{encodeURIComponent(phone)}}`, {{
+                    const response = await fetch(`/paystack/pay?package_id=${{selectedPackageId}}&phone_number=${{encodeURIComponent(phone)}}`, {{
                         method: "POST"
                     }});
                     const data = await response.json();
+                    const paymentId = data.payment_id;
 
                     if (response.ok) {{
-                        status.innerHTML = `
-                            ✅ Check your phone and enter your M-Pesa PIN to complete payment.<br><br>
-                            Once paid, you'll be logged in automatically. If not, reconnect and log in using:<br>
-                            &nbsp;&nbsp;• Username: your phone number<br>
-                            &nbsp;&nbsp;• Password: the M-Pesa code from your confirmation SMS
-                        `;
-                        status.className = "success";
+                        status.innerHTML = "Check your phone and enter your M-Pesa PIN to complete payment.";
+                        status.className = "visible success";
+
+                        pollForActivation(paymentId, status);
                     }} else {{
                         status.innerText = data.message || "Something went wrong. Try again.";
-                        status.className = "";
-                        btn.disabled = false;
+                        status.className = "visible";
                     }}
                 }} catch (err) {{
                     status.innerText = "Network error. Check your connection and try again.";
-                    btn.disabled = false;
+                    status.className = "visible";
                 }}
+            }}
+
+            function pollForActivation(paymentId, status) {{
+                let attempts = 0;
+                const interval = setInterval(async () => {{
+                    attempts++;
+                    const res = await fetch(`/paystack/status/${{paymentId}}`);
+                    const data = await res.json();
+
+                    if (data.activated) {{
+                        clearInterval(interval);
+                        status.innerHTML = `
+                            ✅ Payment successful! You're connected.<br><br>
+                            Username: <b>${{data.username}}</b><br>
+                            Password: <b>${{data.password}}</b>
+                        `;
+                    }} else if (attempts > 20) {{
+                        clearInterval(interval);
+                        status.innerHTML = "Still waiting for payment confirmation. If you completed payment, please contact us.";
+                    }}
+                }}, 3000);
             }}
         </script>
     </body>

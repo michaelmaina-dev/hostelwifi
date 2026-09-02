@@ -78,3 +78,15 @@ async def paystack_webhook(request: dict, db: Session = Depends(get_db)):
         db.commit()
 
     return {"status": "received"}
+
+@router.get("/status/{payment_id}")
+def check_status(payment_id: int, db: Session = Depends(get_db)):
+    payment = db.query(models.Payment).filter(models.Payment.id == payment_id).first()
+    if not payment:
+        return {"activated": False}
+
+    return {
+        "activated": payment.activated,
+        "username": payment.customer.phone if payment.activated else None,
+        "password": payment.hotspot_password if payment.activated else None
+    }
