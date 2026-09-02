@@ -68,6 +68,9 @@ async def paystack_webhook(request: dict, db: Session = Depends(get_db)):
     if not payment:
         return {"status": "ignored"}
 
+    if payment.activated:
+        return {"status": "already_processed"}
+
     if event == "charge.success":
         payment.status = "success"
         db.commit()
