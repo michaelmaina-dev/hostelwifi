@@ -18,7 +18,7 @@ def check_expired_payments():
             db.query(Payment)
             .join(Customer)
             .filter(Payment.activated == True)
-            .filter(Payment.expires_at < datetime.now(timezone.utc)).replace(tzinfo=None)
+            .filter(Payment.expires_at < datetime.now(timezone.utc).replace(tzinfo=None))
             .filter(Customer.suspended == False)
             .all()
         )
