@@ -57,7 +57,18 @@ class BillingService:
         payment.hotspot_password = password       # 👈 fix: actually save it
         payment.activated = True
         payment.status = "success"                 # 👈 fix: keep status consistent
-        payment.expires_at = utc_now() + timedelta(seconds=package.duration_seconds)
+
+        # If they still have unexpired time from an earlier payment, add this
+        # package's duration on top of that. Otherwise, start fresh from now.
+        now = utc_now()
+        previous_expiry = customer.payments and max(
+            (p.expires_at for p in customer.payments
+             if p.activated and p.expires_at and p.expires_at > now and p.id != payment.id),
+            default=None
+        )
+
+        base_time = previous_expiry if previous_expiry else now
+        payment.expires_at = base_time + timedelta(seconds=package.duration_seconds)
 
         customer.suspended = False                  # 👈 fix: clear suspension on (re)activation
         self.db.commit()
@@ -81,7 +92,7 @@ class BillingService:
 
         return customer
 
-    def extend_customer(self, payment_id: int):
+    def extend_customer(self, payment_id: int, extra_seconds: int = None):
         payment = (
             self.db.query(Payment)
             .filter(Payment.id == payment_id)
@@ -98,10 +109,35 @@ class BillingService:
         if not payment.expires_at:
             return None
 
-        payment.expires_at = payment.expires_at + timedelta(seconds=package.duration_seconds)  # 👈 fix: add to existing, don't reset
+        # Use a custom bonus duration if given, otherwise default to a full
+        # extra package length (original behavior).
+        seconds_to_add = extra_seconds if extra_seconds is not None else package.duration_seconds
+        payment.expires_at = payment.expires_at + timedelta(seconds=seconds_to_add)
+
+        # If the customer is currently suspended on the router, re-sync them
+        # so the extension actually takes effect there too, not just in the DB.
+        customer = payment.customer
+        if customer and customer.suspended:
+            if not payment.hotspot_password:
+                # Don't push a None/empty password to the router — that would
+                # overwrite their real password with garbage. Extend the DB
+                # expiry, but leave the re-enable to be handled manually
+                # (or by a fresh activate_payment call with a real password).
+                self.db.commit()
+                return payment
+
+            profile_name = f"pkg_{package.id}"
+            self.router.create_hotspot_user(
+                username=customer.phone,
+                password=payment.hotspot_password,
+                profile=profile_name
+            )
+            customer.suspended = False
+
         self.db.commit()
 
         return payment
+
     def delete_customer(self, customer_id: int):
             customer = (
                 self.db.query(Customer)

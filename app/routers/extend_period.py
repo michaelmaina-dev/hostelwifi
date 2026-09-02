@@ -13,9 +13,14 @@ router = APIRouter(
 
 
 @router.post("/extend/{payment_id}")
-def extend_customer(payment_id: int, db: Session = Depends(get_db), _: None = Depends(verify_admin_key)):
+def extend_customer(
+    payment_id: int,
+    extra_seconds: int = None,
+    db: Session = Depends(get_db),
+    _: None = Depends(verify_admin_key)
+):
     billing = BillingService(db)
-    result = billing.extend_customer(payment_id)
+    result = billing.extend_customer(payment_id, extra_seconds=extra_seconds)
 
     if not result:
         raise HTTPException(status_code=404, detail="Payment not found or not yet activated")
