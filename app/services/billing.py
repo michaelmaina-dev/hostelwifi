@@ -4,15 +4,18 @@ from app.models import Customer, Package, Payment
 from app.services.mikrotik import MikroTikService
 from datetime import datetime, timedelta, timezone
 import secrets
-import string
 
 
 def utc_now():
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-def generate_password(length=8):
-    characters = string.ascii_letters + string.digits
+def generate_password(length=10):
+    # Digits + uppercase letters only, no lowercase — and 0/O excluded
+    # entirely since they're easy to confuse when read off a screen.
+    digits = "123456789"
+    uppercase = "ABCDEFGHIJKLMNPQRSTUVWXYZ"  # O removed
+    characters = digits + uppercase
     return "".join(secrets.choice(characters) for _ in range(length))
 
 
