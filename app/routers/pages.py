@@ -8,6 +8,20 @@ from app import models
 router = APIRouter()
 
 
+@router.get("/lookup-login/{code}")
+def lookup_login(code: str, db: Session = Depends(get_db)):
+    payment = (
+        db.query(models.Payment)
+        .filter(models.Payment.hotspot_password == code)
+        .filter(models.Payment.activated == True)
+        .order_by(models.Payment.paid_at.desc())
+        .first()
+    )
+    if not payment:
+        return {"found": False}
+    return {"found": True, "username": payment.customer.phone}
+
+
 @router.get("/pay", response_class=HTMLResponse)
 def payment_page(db: Session = Depends(get_db)):
     packages = db.query(models.Package).filter(models.Package.active == True).all()
