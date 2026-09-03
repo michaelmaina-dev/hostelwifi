@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import case
 
 from app.database import get_db
 from app import models
@@ -24,7 +25,15 @@ def lookup_login(code: str, db: Session = Depends(get_db)):
 
 @router.get("/pay", response_class=HTMLResponse)
 def payment_page(db: Session = Depends(get_db)):
-    packages = db.query(models.Package).filter(models.Package.active == True).all()
+    packages = (
+        db.query(models.Package)
+        .filter(models.Package.active == True)
+        .order_by(
+            case((models.Package.name == "Admin Apology Offer", 0), else_=1),
+            models.Package.id
+        )
+        .all()
+    )
 
     def signal_bars(pkg):
         speeds = [int("".join(filter(str.isdigit, p.download_speed)) or 0) for p in packages]
