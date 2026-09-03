@@ -370,12 +370,9 @@ def payment_page(db: Session = Depends(get_db)):
             </div>
 
             <div id="panel-login" class="panel">
-                <form action="http://192.168.88.1/login" method="post" onsubmit="return normalizeLoginPhone()">
-                    <input type="hidden" name="dst" value="http://www.msftconnecttest.com/redirect">
-                    <label for="login-username">Phone number</label>
-                    <input type="text" id="login-username" name="username" placeholder="0743512704" required>
+                <form id="login-form" onsubmit="return handleManualLogin(event)">
                     <label for="login-password">Password</label>
-                    <input type="text" id="login-password" name="password" placeholder="e.g. QGH7XXXXX" required>
+                    <input type="text" id="login-password" name="password" placeholder="e.g. H7NKX4T9Q2" required>
                     <button type="submit" class="primary">Log In</button>
                 </form>
             </div>
@@ -404,13 +401,43 @@ def payment_page(db: Session = Depends(get_db)):
                 document.body.appendChild(form);
                 form.submit();
             }}
-            function normalizeLoginPhone() {{
-                const input = document.getElementById('login-username');
-                let phone = input.value.trim();
-                if (phone.startsWith('+')) phone = phone.slice(1);
-                if (phone.startsWith('0')) phone = '254' + phone.slice(1);
-                input.value = phone;
-                return true;
+            async function handleManualLogin(event) {{
+                event.preventDefault();
+
+                const passwordInput = document.getElementById('login-password');
+                const code = passwordInput.value.trim();
+                const status = document.getElementById('status');
+                const submitBtn = event.target.querySelector('button[type="submit"]');
+
+                if (!code) {{
+                    status.innerText = "Enter your password first.";
+                    status.className = "visible";
+                    return false;
+                }}
+
+                submitBtn.disabled = true;
+                status.innerText = "Checking your details...";
+                status.className = "visible";
+
+                try {{
+                    const res = await fetch(`/lookup-login/${{encodeURIComponent(code)}}`);
+                    const data = await res.json();
+
+                    if (!data.found) {{
+                        status.innerText = "That password wasn't recognized. Please check it and try again.";
+                        status.className = "visible";
+                        submitBtn.disabled = false;
+                        return false;
+                    }}
+
+                    autoLogin(data.username, code);
+                }} catch (err) {{
+                    status.innerText = "Network error. Check your connection and try again.";
+                    status.className = "visible";
+                    submitBtn.disabled = false;
+                }}
+
+                return false;
             }}
             function showTab(name) {{
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
