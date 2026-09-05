@@ -4,7 +4,7 @@ from app.models import Customer, Package, Payment
 from app.services.mikrotik import MikroTikService
 from datetime import datetime, timedelta, timezone
 import secrets
-from app.services.sms_service import SMSService
+
 
 
 
@@ -60,10 +60,6 @@ class BillingService:
         )
 
         payment.hotspot_password = password       # 👈 fix: actually save it
-        try:
-            SMSService().send_password_sms(customer.phone, password)
-        except Exception as e:
-            print(f"[SMS] Error sending password SMS: {e}")
         payment.activated = True
         payment.status = "success"                 # 👈 fix: keep status consistent
 
