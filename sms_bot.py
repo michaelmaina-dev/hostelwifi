@@ -23,7 +23,7 @@ from datetime import timedelta
 
 from app.database import SessionLocal
 from app.models import Payment
-from app.services.sms_service import SMSService
+from app.services.android_sms_service import AndroidSMSService as SMSService
 
 STATE_FILE = "sms_bot_last_sent.txt"
 POLL_INTERVAL_SECONDS = 15
@@ -72,13 +72,9 @@ def run_once(sms_service, last_sent_id):
                 continue
 
             expiry_str = format_kenya_time(payment.expires_at)
-            message = (
-                f"Shadow WiFi: Your password is {payment.hotspot_password}. "
-                f"Valid until {expiry_str}. Use your phone number as username."
-            )
 
             try:
-                sms_service.send_password_sms(customer.phone, payment.hotspot_password)
+                sms_service.send_password_sms(customer.phone, payment.hotspot_password, expiry_str)
                 print(f"[sms_bot] Sent SMS for payment {payment.id} to {customer.phone}")
             except Exception as e:
                 print(f"[sms_bot] Failed to send SMS for payment {payment.id}: {e}")

@@ -7,8 +7,14 @@ ANDROID_SMS_URL = "https://api.sms-gate.app/3rdparty/v1/message"
 
 class AndroidSMSService:
 
-    def send_password_sms(self, phone_number, password):
-        message = f"Shadow WiFi: Your password is {password}. Save this message. Use your phone number as username."
+    def send_password_sms(self, phone_number, password, expiry_str=None):
+        if expiry_str:
+            message = (
+                f"Shadow WiFi: Your password is {password}. "
+                f"Valid until {expiry_str}. Save this message."
+            )
+        else:
+            message = f"Shadow WiFi: Your password is {password}. Save this message."
 
         try:
             response = requests.post(
