@@ -104,11 +104,22 @@ class MikroTikService:
     
     def disable_hotspot_user(self, username):
         hotspot = self.api.get_resource("/ip/hotspot/user")
+        active = self.api.get_resource("/ip/hotspot/active")
 
         user = hotspot.get(name=username)
 
         if user:
-            hotspot.set(id=user[0]["id"], disabled="yes")
+            # Disable the HotSpot account so it cannot log in again
+            hotspot.set(
+                id=user[0]["id"],
+                disabled="yes"
+            )
+
+            # Remove any existing active session
+            sessions = active.get(user=username)
+
+        for session in sessions:
+            active.remove(id=session["id"])
     
     def ensure_profile(self, profile_name, rate_limit, shared_users=1):
         profiles = self.api.get_resource("/ip/hotspot/user/profile")
