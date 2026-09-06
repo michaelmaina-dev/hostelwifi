@@ -42,7 +42,7 @@ MAX_RETRIES = 5
 # When a payment permanently gives up (hits MAX_RETRIES), an SMS alert is
 # sent to this number automatically, so you don't have to watch logs or
 # run a report script — you just get texted the details directly.
-ADMIN_PHONE_NUMBER = "254700000000"  # <-- set this to your real number
+ADMIN_PHONE_NUMBER = "254745136987"  # <-- set this to your real number
 
 # --- Phone number overrides ---
 # Some customers pay/register under one number but want the password sent
