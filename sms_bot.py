@@ -27,7 +27,7 @@ bottom of this file for the service unit).
 import time
 import os
 import json
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
 
 from app.database import SessionLocal
 from app.models import Payment
@@ -42,7 +42,7 @@ MAX_RETRIES = 5
 # When a payment permanently gives up (hits MAX_RETRIES), an SMS alert is
 # sent to this number automatically, so you don't have to watch logs or
 # run a report script — you just get texted the details directly.
-ADMIN_PHONE_NUMBER = "254745136987"  # <-- set this to your real number
+ADMIN_PHONE_NUMBER = "254700000000"  # <-- set this to your real number
 
 # --- Phone number overrides ---
 # Some customers pay/register under one number but want the password sent
@@ -101,6 +101,17 @@ def run_once(sms_service, state):
             if not customer or not customer.phone:
                 print(f"[sms_bot] Skipping payment {pid}: no customer/phone")
                 state["gave_up"].append(pid)
+                state_changed = True
+                continue
+
+            # Never send a password for a package that's already expired by
+            # the time we get to it — this happens if the bot was offline
+            # for a while and comes back to a backlog. A stale password is
+            # useless to the customer and wastes SMS quota.
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
+            if payment.expires_at and payment.expires_at < now:
+                print(f"[sms_bot] Skipping payment {pid}: already expired, not sending stale password")
+                state["sent"].append(pid)  # treat as handled, not a failure
                 state_changed = True
                 continue
 
