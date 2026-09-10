@@ -6,7 +6,66 @@ from sqlalchemy import case
 from app.database import get_db
 from app import models
 
+import os
+
 router = APIRouter()
+
+FREE_MODE_FLAG = "free_mode.flag"
+FREE_MODE_USERNAME = "tenant-free"
+FREE_MODE_PASSWORD = "tenant-free"
+
+
+def free_mode_page():
+    return f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Connected</title>
+        <style>
+            body {{
+                margin: 0;
+                background: #FFFFFF;
+                color: #1A1A1A;
+                font-family: 'Inter', sans-serif;
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 32px 16px;
+                text-align: center;
+            }}
+            .box {{
+                max-width: 380px;
+            }}
+            h1 {{
+                font-size: 24px;
+                margin-bottom: 12px;
+            }}
+            p {{
+                color: #6B6B6B;
+                font-size: 15px;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="box">
+            <h1>You're connected</h1>
+            <p>This network is provided free for tenants.</p>
+        </div>
+
+        <form id="auto-login-form" action="http://192.168.88.1/login" method="post" style="display:none;">
+            <input type="hidden" name="dst" value="http://www.msftconnecttest.com/redirect">
+            <input type="hidden" name="username" value="{FREE_MODE_USERNAME}">
+            <input type="hidden" name="password" value="{FREE_MODE_PASSWORD}">
+        </form>
+        <script>
+            document.getElementById('auto-login-form').submit();
+        </script>
+    </body>
+    </html>
+    """
 
 
 @router.get("/lookup-login/{code}")
@@ -25,6 +84,9 @@ def lookup_login(code: str, db: Session = Depends(get_db)):
 
 @router.get("/pay", response_class=HTMLResponse)
 def payment_page(db: Session = Depends(get_db)):
+    if os.path.exists(FREE_MODE_FLAG):
+        return HTMLResponse(content=free_mode_page())
+
     packages = (
         db.query(models.Package)
         .filter(models.Package.active == True)
