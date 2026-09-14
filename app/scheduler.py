@@ -39,4 +39,4 @@ def check_expired_payments():
 
 
 scheduler = BackgroundScheduler()
-scheduler.add_job(check_expired_payments, "interval", seconds=10)
+scheduler.add_job(check_expired_payments, "interval",  minutes=3)
