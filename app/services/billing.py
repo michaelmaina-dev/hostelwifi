@@ -1,8 +1,8 @@
 from sqlalchemy.orm import Session
 
-from app.models import Customer, Package, Payment
+from app.models import Customer, Package, Payment, DailyUsage
 from app.services.mikrotik import MikroTikService
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, date
 import secrets
 
 
@@ -52,6 +52,15 @@ class BillingService:
         rate_limit = f"{package.upload_speed}/{package.download_speed}"
 
         self.router.ensure_profile(profile_name, rate_limit, shared_users=package.shared_users)
+
+        # If this package has fair-use throttling configured, make sure its
+        # throttled profile also exists on the router now, so
+        # check_daily_quotas can switch a customer onto it later without
+        # hitting a missing-profile error mid-day.
+        if package.daily_quota_mb and package.throttle_upload and package.throttle_download:
+            throttle_profile = f"throttled_{package.id}"
+            throttle_rate = f"{package.throttle_upload}/{package.throttle_download}"
+            self.router.ensure_profile(throttle_profile, throttle_rate, shared_users=package.shared_users)
 
         self.router.create_hotspot_user(
             username=username,
@@ -160,3 +169,112 @@ class BillingService:
             self.db.commit()
 
             return True
+
+    def _customers_latest_active_payment(self, customer):
+        """Return the customer's most recent activated payment, used to
+        find which package (and therefore which fair-use rules) currently
+        applies to them."""
+        return (
+            self.db.query(Payment)
+            .filter(Payment.customer_id == customer.id, Payment.activated == True)
+            .order_by(Payment.expires_at.desc())
+            .first()
+        )
+
+    def check_daily_quotas(self):
+        """Fair-use enforcement: for every non-suspended customer whose
+        current package defines a daily_quota_mb, poll their live router
+        session, accumulate today's usage as a delta (so reconnects and
+        polling gaps don't lose or double-count data), and switch them
+        onto their package's throttled profile once they cross the quota.
+
+        Intended to run frequently (every few minutes) via the scheduler.
+        Pairs with reset_daily_throttles, which restores full speed the
+        next day.
+        """
+        today = date.today()
+        customers = self.db.query(Customer).filter(Customer.suspended == False).all()
+
+        for customer in customers:
+            latest_payment = self._customers_latest_active_payment(customer)
+            if not latest_payment or not latest_payment.package:
+                continue
+
+            package = latest_payment.package
+            if not package.daily_quota_mb or not package.throttle_upload or not package.throttle_download:
+                continue  # this package doesn't use fair-use throttling
+
+            current_session_bytes = self.router.get_active_user_bytes(customer.phone)
+            if current_session_bytes is None:
+                continue  # not currently connected — nothing new to record
+
+            usage_row = (
+                self.db.query(DailyUsage)
+                .filter(DailyUsage.customer_id == customer.id, DailyUsage.date == today)
+                .first()
+            )
+
+            if not usage_row:
+                # First time we've seen this customer today: record the
+                # current counter as a baseline rather than counting
+                # whatever they'd already used before we started watching
+                # (e.g. carryover from a session spanning midnight).
+                usage_row = DailyUsage(
+                    customer_id=customer.id,
+                    date=today,
+                    bytes_used=0,
+                    last_session_bytes=current_session_bytes,
+                )
+                self.db.add(usage_row)
+                self.db.flush()
+            else:
+                if current_session_bytes < usage_row.last_session_bytes:
+                    # Counter dropped: the session restarted (disconnect
+                    # then reconnect). The new reading is fresh usage on
+                    # its own, not a delta against the old counter.
+                    delta = current_session_bytes
+                else:
+                    delta = current_session_bytes - usage_row.last_session_bytes
+
+                usage_row.bytes_used += delta
+                usage_row.last_session_bytes = current_session_bytes
+
+            quota_bytes = package.daily_quota_mb * 1024 * 1024
+
+            if usage_row.bytes_used >= quota_bytes and not usage_row.throttled:
+                throttle_profile = f"throttled_{package.id}"
+                try:
+                    self.router.set_user_profile(customer.phone, throttle_profile)
+                    usage_row.throttled = True
+                except Exception as e:
+                    print(f"[billing] Failed to throttle customer {customer.id}: {e}")
+
+            self.db.commit()
+
+    def reset_daily_throttles(self):
+        """Restore full package speed for anyone throttled on a previous
+        day. Intended to run once daily, shortly after midnight, via the
+        scheduler."""
+        today = date.today()
+
+        throttled_rows = (
+            self.db.query(DailyUsage)
+            .filter(DailyUsage.throttled == True, DailyUsage.date < today)
+            .all()
+        )
+
+        for row in throttled_rows:
+            customer = row.customer
+            if not customer or customer.suspended:
+                continue
+
+            latest_payment = self._customers_latest_active_payment(customer)
+            if not latest_payment or not latest_payment.package:
+                continue
+
+            package = latest_payment.package
+            normal_profile = f"pkg_{package.id}"
+            try:
+                self.router.set_user_profile(customer.phone, normal_profile)
+            except Exception as e:
+                print(f"[billing] Failed to restore profile for customer {customer.id}: {e}")

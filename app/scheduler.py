@@ -38,5 +38,29 @@ def check_expired_payments():
         db.close()
 
 
+def check_daily_quotas_job():
+    db = SessionLocal()
+    try:
+        billing = BillingService(db)
+        billing.check_daily_quotas()
+    except Exception as e:
+        print(f"[scheduler] Failed to check daily quotas: {e}")
+    finally:
+        db.close()
+
+
+def reset_daily_throttles_job():
+    db = SessionLocal()
+    try:
+        billing = BillingService(db)
+        billing.reset_daily_throttles()
+    except Exception as e:
+        print(f"[scheduler] Failed to reset daily throttles: {e}")
+    finally:
+        db.close()
+
+
 scheduler = BackgroundScheduler()
-scheduler.add_job(check_expired_payments, "interval",  minutes=3)
+scheduler.add_job(check_expired_payments, "interval", minutes=3)
+scheduler.add_job(check_daily_quotas_job, "interval", minutes=5)
+scheduler.add_job(reset_daily_throttles_job, "cron", hour=0, minute=1)

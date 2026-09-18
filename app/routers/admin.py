@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone, timedelta
+from typing import Optional
 
 from app.database import get_db
 from app import models
@@ -86,6 +87,14 @@ def list_packages(db: Session = Depends(get_db)):
     return db.query(models.Package).all()
 
 
+@router.get("/packages/{package_id}")
+def get_package(package_id: int, db: Session = Depends(get_db)):
+    package = db.query(models.Package).filter(models.Package.id == package_id).first()
+    if not package:
+        return {"error": "Package not found"}
+    return package
+
+
 @router.put("/packages/{package_id}/price")
 def update_package_price(package_id: int, price: int, db: Session = Depends(get_db)):
     package = db.query(models.Package).filter(models.Package.id == package_id).first()
@@ -97,7 +106,6 @@ def update_package_price(package_id: int, price: int, db: Session = Depends(get_
     db.commit()
 
     return {"message": "Price updated", "package_id": package.id, "new_price": package.price}
-
 
 
 UNIT_TO_SECONDS = {
@@ -118,11 +126,35 @@ def create_package(
     download_speed: str,
     upload_speed: str,
     shared_users: int = 1,
+    daily_quota_mb: Optional[int] = None,
+    throttle_upload: Optional[str] = None,
+    throttle_download: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
+    """Create a new package/bundle.
+
+    Speed fields (download_speed, upload_speed) must include the unit
+    MikroTik expects, e.g. "3M", not "3" — a bare number is interpreted
+    as bits/sec, not megabits, and effectively breaks the package.
+
+    daily_quota_mb, throttle_upload and throttle_download are optional
+    and only needed for fair-use bundles: once a customer on this
+    package uses daily_quota_mb worth of data in a calendar day, they
+    are automatically switched to throttle_upload/throttle_download
+    speed until the next day. Leave all three unset for packages that
+    don't need a fair-use cap (e.g. short/hourly packages).
+    """
     unit = duration_unit.lower()
     if unit not in UNIT_TO_SECONDS:
         return {"error": f"Invalid duration_unit '{duration_unit}'"}
+
+    if (daily_quota_mb or throttle_upload or throttle_download) and not (
+        daily_quota_mb and throttle_upload and throttle_download
+    ):
+        return {
+            "error": "daily_quota_mb, throttle_upload and throttle_download must "
+                     "all be provided together, or all left unset"
+        }
 
     package = models.Package(
         name=name,
@@ -130,9 +162,84 @@ def create_package(
         price=price,
         download_speed=download_speed,
         upload_speed=upload_speed,
-        shared_users=shared_users
+        shared_users=shared_users,
+        daily_quota_mb=daily_quota_mb,
+        throttle_upload=throttle_upload,
+        throttle_download=throttle_download,
     )
     db.add(package)
+    db.commit()
+    db.refresh(package)
+    return package
+
+
+@router.put("/packages/{package_id}")
+def update_package(
+    package_id: int,
+    name: Optional[str] = None,
+    duration_value: Optional[int] = None,
+    duration_unit: Optional[str] = None,
+    price: Optional[int] = None,
+    download_speed: Optional[str] = None,
+    upload_speed: Optional[str] = None,
+    shared_users: Optional[int] = None,
+    daily_quota_mb: Optional[int] = None,
+    throttle_upload: Optional[str] = None,
+    throttle_download: Optional[str] = None,
+    clear_fair_use: bool = False,
+    active: Optional[bool] = None,
+    db: Session = Depends(get_db)
+):
+    """Edit any field(s) of an existing package/bundle. Only fields you
+    pass are changed — everything else stays as-is.
+
+    To remove fair-use throttling from a package entirely, pass
+    clear_fair_use=true (this takes priority over any daily_quota_mb /
+    throttle_upload / throttle_download values sent in the same call).
+
+    Note: editing an existing package's speed or fair-use fields does
+    not retroactively change the MikroTik profile for customers already
+    activated on it — new values apply the next time a payment for this
+    package is activated. Existing sessions are unaffected until then.
+    """
+    package = db.query(models.Package).filter(models.Package.id == package_id).first()
+    if not package:
+        return {"error": "Package not found"}
+
+    if name is not None:
+        package.name = name
+
+    if duration_value is not None or duration_unit is not None:
+        if duration_value is None or duration_unit is None:
+            return {"error": "duration_value and duration_unit must be provided together"}
+        unit = duration_unit.lower()
+        if unit not in UNIT_TO_SECONDS:
+            return {"error": f"Invalid duration_unit '{duration_unit}'"}
+        package.duration_seconds = duration_value * UNIT_TO_SECONDS[unit]
+
+    if price is not None:
+        package.price = price
+    if download_speed is not None:
+        package.download_speed = download_speed
+    if upload_speed is not None:
+        package.upload_speed = upload_speed
+    if shared_users is not None:
+        package.shared_users = shared_users
+    if active is not None:
+        package.active = active
+
+    if clear_fair_use:
+        package.daily_quota_mb = None
+        package.throttle_upload = None
+        package.throttle_download = None
+    else:
+        if daily_quota_mb is not None:
+            package.daily_quota_mb = daily_quota_mb
+        if throttle_upload is not None:
+            package.throttle_upload = throttle_upload
+        if throttle_download is not None:
+            package.throttle_download = throttle_download
+
     db.commit()
     db.refresh(package)
     return package
