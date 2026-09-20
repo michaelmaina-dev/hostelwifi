@@ -184,16 +184,26 @@ class BillingService:
     def check_daily_quotas(self):
         """Fair-use enforcement: for every non-suspended customer whose
         current package defines a daily_quota_mb, poll their live router
-        session, accumulate today's usage as a delta (so reconnects and
+        session(s), accumulate today's usage as a delta (so reconnects and
         polling gaps don't lose or double-count data), and switch them
         onto their package's throttled profile once they cross the quota.
 
         Intended to run frequently (every few minutes) via the scheduler.
         Pairs with reset_daily_throttles, which restores full speed the
         next day.
+
+        Logs a one-line summary every run (customers checked / eligible
+        for fair-use / currently connected / newly throttled), plus a
+        per-customer line whenever something notable happens, so an empty
+        journalctl output can never be mistaken for "this isn't running" —
+        if the job runs, it always prints at least the summary line.
         """
         today = date.today()
         customers = self.db.query(Customer).filter(Customer.suspended == False).all()
+
+        eligible_count = 0
+        connected_count = 0
+        newly_throttled = 0
 
         for customer in customers:
             latest_payment = self._customers_latest_active_payment(customer)
@@ -204,9 +214,13 @@ class BillingService:
             if not package.daily_quota_mb or not package.throttle_upload or not package.throttle_download:
                 continue  # this package doesn't use fair-use throttling
 
+            eligible_count += 1
+
             current_session_bytes = self.router.get_active_user_bytes(customer.phone)
             if current_session_bytes is None:
                 continue  # not currently connected — nothing new to record
+
+            connected_count += 1
 
             usage_row = (
                 self.db.query(DailyUsage)
@@ -240,16 +254,46 @@ class BillingService:
                 usage_row.last_session_bytes = current_session_bytes
 
             quota_bytes = package.daily_quota_mb * 1024 * 1024
+            used_mb = usage_row.bytes_used / (1024 * 1024)
+            quota_mb = package.daily_quota_mb
 
             if usage_row.bytes_used >= quota_bytes and not usage_row.throttled:
                 throttle_profile = f"throttled_{package.id}"
                 try:
                     self.router.set_user_profile(customer.phone, throttle_profile)
                     usage_row.throttled = True
+                    newly_throttled += 1
+                    print(
+                        f"[billing] THROTTLED customer {customer.id} ({customer.phone}) "
+                        f"on {package.name}: {used_mb:.0f}MB / {quota_mb}MB quota "
+                        f"-> switched to {throttle_profile}"
+                    )
                 except Exception as e:
-                    print(f"[billing] Failed to throttle customer {customer.id}: {e}")
+                    print(
+                        f"[billing] FAILED to throttle customer {customer.id} "
+                        f"({customer.phone}) on {package.name}: {e}"
+                    )
+            elif usage_row.throttled:
+                # Already throttled earlier today — quiet on subsequent
+                # polls, reset_daily_throttles handles restoring them.
+                pass
+            else:
+                # Connected and being tracked, but not over quota yet.
+                # One line per customer per poll is intentionally verbose
+                # right now so usage can be watched in real time; trim
+                # this once the system's been confirmed working.
+                print(
+                    f"[billing] tracking customer {customer.id} ({customer.phone}) "
+                    f"on {package.name}: {used_mb:.0f}MB / {quota_mb}MB quota"
+                )
 
             self.db.commit()
+
+        print(
+            f"[billing] check_daily_quotas run complete: "
+            f"{len(customers)} active customers, {eligible_count} on fair-use packages, "
+            f"{connected_count} currently connected, {newly_throttled} newly throttled"
+        )
 
     def reset_daily_throttles(self):
         """Restore full package speed for anyone throttled on a previous

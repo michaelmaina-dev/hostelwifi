@@ -132,20 +132,27 @@ class MikroTikService:
         )
 
     def get_active_user_bytes(self, username):
-        """Return cumulative bytes (bytes-in + bytes-out) for a user's
-        current active hotspot session, or None if they're not currently
-        connected. Used by BillingService.check_daily_quotas to track
-        fair-use consumption; the caller is responsible for turning this
-        raw cumulative counter into a daily delta, since the counter
-        resets whenever the session itself restarts."""
+        """Return cumulative bytes (bytes-in + bytes-out) across ALL of a
+        user's current active hotspot sessions, or None if they're not
+        currently connected. Summing across sessions matters for any
+        profile with shared-users > 1 — a customer connected on two
+        devices at once shows up as two separate active-session records,
+        and only reading the first one would silently undercount them by
+        up to half their real usage.
+
+        Used by BillingService.check_daily_quotas to track fair-use
+        consumption; the caller is responsible for turning this raw
+        cumulative counter into a daily delta, since the counter resets
+        whenever a session itself restarts."""
         active = self.api.get_resource("/ip/hotspot/active")
         sessions = active.get(user=username)
         if not sessions:
             return None
-        session = sessions[0]
-        bytes_in = int(session.get("bytes-in", 0))
-        bytes_out = int(session.get("bytes-out", 0))
-        return bytes_in + bytes_out
+        total = 0
+        for session in sessions:
+            total += int(session.get("bytes-in", 0))
+            total += int(session.get("bytes-out", 0))
+        return total
 
     def set_user_profile(self, username, profile_name):
         """Switch an existing hotspot user onto a different profile
