@@ -154,6 +154,20 @@ class MikroTikService:
             total += int(session.get("bytes-out", 0))
         return total
 
+    def get_user_bytes(self, username):
+        """Return a hotspot user's persistent, lifetime cumulative bytes
+        (bytes-in + bytes-out), read from the user record itself — not the
+        active-sessions table. Unlike active-session counters, this survives
+        disconnects/reconnects, so it's safe to diff across polling gaps
+        without losing usage from sessions that ended between checks.
+        Returns None only if the user doesn't exist on the router at all."""
+        hotspot = self.api.get_resource("/ip/hotspot/user")
+        user = hotspot.get(name=username)
+        if not user:
+            return None
+        bytes_in = int(user[0].get("bytes-in", 0))
+        bytes_out = int(user[0].get("bytes-out", 0))
+        return bytes_in + bytes_out
     def set_user_profile(self, username, profile_name):
         """Switch an existing hotspot user onto a different profile
         (e.g. moving them onto a fair-use throttle profile, or back to

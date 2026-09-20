@@ -216,9 +216,9 @@ class BillingService:
 
             eligible_count += 1
 
-            current_session_bytes = self.router.get_active_user_bytes(customer.phone)
+            current_session_bytes = self.router.get_user_bytes(customer.phone)
             if current_session_bytes is None:
-                continue  # not currently connected — nothing new to record
+                continue  # user doesn't exist on router at all — skip
 
             connected_count += 1
 
