@@ -168,6 +168,7 @@ class MikroTikService:
         bytes_in = int(user[0].get("bytes-in", 0))
         bytes_out = int(user[0].get("bytes-out", 0))
         return bytes_in + bytes_out
+    
     def set_user_profile(self, username, profile_name):
         """Switch an existing hotspot user onto a different profile
         (e.g. moving them onto a fair-use throttle profile, or back to
