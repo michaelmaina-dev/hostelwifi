@@ -168,6 +168,31 @@ class MikroTikService:
         bytes_in = int(user[0].get("bytes-in", 0))
         bytes_out = int(user[0].get("bytes-out", 0))
         return bytes_in + bytes_out
+
+    def get_total_user_bytes(self, username):
+        """Complete usage-so-far for a customer: persistent (completed-session)
+        bytes from their user record, plus their current in-progress session(s)
+        if connected right now. Continuous across connect/disconnect — when a
+        session ends, RouterOS folds its bytes into the persistent counter at
+        the same moment the active-session component drops to zero, so the
+        combined total never jumps or loses data. Sums multiple simultaneous
+        sessions (shared_users > 1). Returns None only if the user doesn't
+        exist on the router at all."""
+        hotspot = self.api.get_resource("/ip/hotspot/user")
+        user = hotspot.get(name=username)
+        if not user:
+            return None
+
+        persistent_bytes = int(user[0].get("bytes-in", 0)) + int(user[0].get("bytes-out", 0))
+
+        active = self.api.get_resource("/ip/hotspot/active")
+        sessions = active.get(user=username)
+        active_bytes = sum(
+            int(s.get("bytes-in", 0)) + int(s.get("bytes-out", 0))
+            for s in sessions
+        ) if sessions else 0
+
+        return persistent_bytes + active_bytes
     
     def set_user_profile(self, username, profile_name):
         """Switch an existing hotspot user onto a different profile
