@@ -4,14 +4,17 @@ import time
 from app.services.android_sms_service import AndroidSMSService
 
 MESSAGE = (
-    "Dear Tenants, sink tap water is temporarily unavailable. "
-    "Bathroom tap water remains available for general use. "
-    "For drinking and cooking, kindly boil the water first. "
-    "We appreciate your understanding and will update you once sink water is restored."
+    "Dear Customers, Wi-Fi is currently down due to a Safaricom network outage. "
+    "All active plans will be extended by the duration of the outage. "
+    "We apologize for the inconvenience and appreciate your patience. "
+    
 )
 DELAY_SECONDS = 4
-
-
+#Dear Tenants, sink tap water is temporarily unavailable.
+#
+#Bathroom tap water remains available for general use.
+#For drinking and cooking, kindly boil the water first.
+#We appreciate your understanding and will update you once sink water is restored.
 def normalize(raw):
     n = "".join(ch for ch in raw if ch.isdigit())
     if n.startswith("0"):
