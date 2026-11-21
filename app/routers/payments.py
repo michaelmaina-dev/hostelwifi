@@ -46,10 +46,25 @@ def create_payment(
 
     return db_payment
 
-
 @router.get("")
+def get_payments(
+    limit: int = 50,
+    offset: int = 0,
+    phone: str | None = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(models.Payment)
+    if phone:
+        query = query.join(models.Customer).filter(models.Customer.phone == phone)
+    return (
+        query.order_by(models.Payment.id.desc())
+        .offset(offset)
+        .limit(min(limit, 200))
+        .all()
+    )
+'''@router.get("")
 def get_payments(db: Session = Depends(get_db)):
-    return db.query(models.Payment).all()
+    return db.query(models.Payment).all()'''
 
 
 
