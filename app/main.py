@@ -1,5 +1,10 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+#from fastapi import FastAPI
+import secrets
+from fastapi import FastAPI, Depends, HTTPException
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.openapi.docs import get_swagger_ui_html
+from .config import ADMIN_API_KEY
 from fastapi.staticfiles import StaticFiles
 from .database import engine
 from . import models
@@ -33,7 +38,10 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Hostel WiFi Billing System",
     version="1.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None
 )
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
@@ -62,6 +70,27 @@ def home():
         "message": "Hostel WiFi Backend Running"
     }
 
+docs_security = HTTPBasic()
+
+
+def docs_login(credentials: HTTPBasicCredentials = Depends(docs_security)):
+    # Username is ignored; the password must be the admin API key.
+    if not secrets.compare_digest(credentials.password.encode("utf-8"), ADMIN_API_KEY.encode("utf-8")):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid API key",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+
+@app.get("/docs", include_in_schema=False, dependencies=[Depends(docs_login)])
+def docs_page():
+    return get_swagger_ui_html(openapi_url="/openapi.json", title="Hostel WiFi - API docs")
+
+
+@app.get("/openapi.json", include_in_schema=False, dependencies=[Depends(docs_login)])
+def docs_schema():
+    return app.openapi()
 '''
 from fastapi import FastAPI
 
